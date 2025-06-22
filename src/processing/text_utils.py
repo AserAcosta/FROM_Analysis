@@ -10,12 +10,18 @@ def tokenize(text):
     words = re.findall(r"\b[\w']+\b", text.lower())
     return words
 
-def remove_stopwords(words, stopwords_file='stop_words_english.txt'):
+# Calcula la ruta BASE del proyecto (nivel raíz)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Ruta CORRECTA a los datos
+data_file = os.path.join(BASE_DIR, 'config', "stopwords" )
+
+
+def remove_stopwords(words, stopwords_file= data_file):
     """
     Filtra stopwords desde archivo local con manejo de errores robusto
     """
-    stop_words = set()
-    default_stopwords = {'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', "you're", 
+    
+    stop_words = {'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', "you're", 
                          "you've", "you'll", "you'd", 'your', 'yours', 'yourself', 'yourselves', 'he', 
                          'him', 'his', 'himself', 'she', "she's", 'her', 'hers', 'herself', 'it', "it's", 
                          'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 
@@ -34,19 +40,7 @@ def remove_stopwords(words, stopwords_file='stop_words_english.txt'):
                          "mustn't", 'needn', "needn't", 'shan', "shan't", 'shouldn', "shouldn't", 'wasn', 
                          "wasn't", 'weren', "weren't", 'won', "won't", 'wouldn', "wouldn't"}
     
-    try:
-        # Verificar si el archivo existe
-        if os.path.exists(stopwords_file):
-            with open(stopwords_file, 'r', encoding='utf-8') as f:
-                stop_words = set(f.read().splitlines())
-        else:
-            # Usar stopwords por defecto si el archivo no existe
-            print(f"Advertencia: Archivo {stopwords_file} no encontrado. Usando stopwords por defecto.")
-            stop_words = default_stopwords
-    except Exception as e:
-        print(f"Error cargando stopwords: {e}. Usando set por defecto")
-        stop_words = default_stopwords
-    
+ 
     return [word for word in words if word not in stop_words]
 
 def basic_lemmatize(word):
