@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.pyc
+
+# Datos
+data/processed/
+
+# Configuraciones secretas
+.env
+secrets.ini

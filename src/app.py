@@ -3,15 +3,21 @@ import os
 import pandas as pd
 import math
 import matplotlib.pyplot as plt
-from lexical_analysis import process_episodes
-from utils.wordcloud_utils import generate_wordcloud
+from analysis.lexical_analysis import process_episodes
+from visualization.wordcloud_generator import generate_wordcloud
 
 # Configuración
 st.set_page_config(layout="wide")
 st.title("ANÁLISIS LÉXICO: 'FROM' - TEMPORADA 1")
 
 # Cargar datos
-data_folder = os.path.join(os.path.dirname(__file__), 'data')
+
+# Calcula la ruta BASE del proyecto (nivel raíz)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Ruta CORRECTA a los datos
+data_folder = os.path.join(BASE_DIR, 'data')
+
+
 results, global_top = process_episodes(data_folder)
 df = pd.DataFrame(results)
 

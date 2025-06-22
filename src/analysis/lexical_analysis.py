@@ -1,6 +1,6 @@
 import os
-from utils.srt_parser import parse_srt
-from utils.text_utils import tokenize, remove_stopwords, basic_lemmatize
+from processing.srt_parser import parse_srt
+from processing.text_utils import tokenize, remove_stopwords, basic_lemmatize
 
 def process_episodes(data_folder):
     results = []
