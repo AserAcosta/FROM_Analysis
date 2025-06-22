@@ -1,9 +1,9 @@
 # 🎙 FROM Analysis - Análisis de Transcripciones
 
-Proyecto para analizar transcripciones de episodios (.stt)
+Proyecto para analizar transcripciones de episodios (.str)
 
 ## Características
-- Procesamiento de archivos STT
+- Procesamiento de archivos .str
 - Generación de nubes de palabras
 - Análisis léxico
 
