@@ -3,8 +3,7 @@ import chardet
 
 def parse_srt(file_path):
     """
-    Parsea archivos SRT y extrae: id, tiempo inicio, tiempo fin, texto y duración
-    Devuelve una lista de diccionarios con la información estructurada
+    Parsea archivos SRT sin detección de personajes
     """
     # Detectar encoding
     with open(file_path, 'rb') as f:
@@ -15,7 +14,7 @@ def parse_srt(file_path):
     with open(file_path, 'r', encoding=encoding, errors='replace') as f:
         content = f.read()
 
-    # Patrón regex mejorado
+    # Patrón regex
     pattern = re.compile(
         r'(\d+)\s*\n'  # Número de subtítulo
         r'(\d{2}:\d{2}:\d{2},\d{3})'  # Inicio
@@ -31,14 +30,14 @@ def parse_srt(file_path):
         sub_id = int(match.group(1))
         start = match.group(2)
         end = match.group(3)
-        text = match.group(4)
+        text = match.group(4).strip()
         
         # Limpiar texto
         text = re.sub(r'<[^>]+>', '', text)  # HTML tags
         text = re.sub(r'\{\\an?\d\}', '', text)  # Marcadores
         text = re.sub(r'\s+', ' ', text).strip()  # Espacios
         
-        # Calcular duración en segundos
+        # Calcular duración
         def time_to_seconds(t):
             h, m, s = t.split(':')
             s = s.replace(',', '.')

@@ -1,5 +1,7 @@
-numpy
+streamlit
 pandas
 matplotlib
-wordcloud
+pillow
+numpy
+chardet
 nltk

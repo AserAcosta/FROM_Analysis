@@ -1,27 +1,25 @@
 import re
 import os
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import wordnet
+import nltk
+
+# Descargar recursos necesarios
+nltk.download('wordnet', quiet=True)
+nltk.download('omw-1.4', quiet=True)
+
+lemmatizer = WordNetLemmatizer()
 
 def tokenize(text):
-    """
-    Tokeniza texto usando expresiones regulares, preservando contracciones en inglés.
-    Ejemplo: "don't" se mantiene como una sola palabra en lugar de dividirse en "don" y "t"
-    """
-    # Versión mejorada: maneja contracciones como "don't", "can't", "I'm"
     words = re.findall(r"\b[\w']+\b", text.lower())
     return words
 
-# Calcula la ruta BASE del proyecto (nivel raíz)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# Ruta CORRECTA a los datos
-data_file = os.path.join(BASE_DIR, 'config', "stopwords" )
-
-
-def remove_stopwords(words, stopwords_file= data_file):
+def remove_stopwords(words, stopwords_file=None):
     """
     Filtra stopwords desde archivo local con manejo de errores robusto
     """
-    
-    stop_words = {'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', "you're", 
+    stop_words = set()
+    default_stopwords = {'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', "you're", 
                          "you've", "you'll", "you'd", 'your', 'yours', 'yourself', 'yourselves', 'he', 
                          'him', 'his', 'himself', 'she', "she's", 'her', 'hers', 'herself', 'it', "it's", 
                          'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 
@@ -40,49 +38,38 @@ def remove_stopwords(words, stopwords_file= data_file):
                          "mustn't", 'needn', "needn't", 'shan', "shan't", 'shouldn', "shouldn't", 'wasn', 
                          "wasn't", 'weren', "weren't", 'won', "won't", 'wouldn', "wouldn't"}
     
- 
+    # Determinar la ruta correcta para el archivo de stopwords
+    if stopwords_file is None:
+        # Obtener la ruta del directorio actual del script
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        # Construir la ruta al archivo de stopwords
+        stopwords_file = os.path.join(current_dir, '..', 'config', 'stopwords', 'english.txt')
+    
+    try:
+        if os.path.exists(stopwords_file):
+            with open(stopwords_file, 'r', encoding='utf-8') as f:
+                stop_words = set(f.read().splitlines())
+        else:
+            print(f"Advertencia: Archivo {stopwords_file} no encontrado. Usando stopwords por defecto.")
+            stop_words = default_stopwords
+    except Exception as e:
+        print(f"Error cargando stopwords: {e}. Usando set por defecto")
+        stop_words = default_stopwords
+    
     return [word for word in words if word not in stop_words]
 
-def basic_lemmatize(word):
+def advanced_lemmatize(word):
     """
-    Lematización básica para inglés con reglas expandidas.
-    Maneja plurales, verbos en pasado y formas comunes.
+    Lematización avanzada usando WordNet
     """
-    # Reglas para plurales y posesivos
-    if word.endswith("'s"):
-        word = word[:-2]
-    if word.endswith("s'"):
-        word = word[:-1]
+    pos_tags = [wordnet.NOUN, wordnet.VERB, wordnet.ADJ, wordnet.ADV]
     
-    # Verbos y formas comunes
-    if word.endswith('ies'):
-        return word[:-3] + 'y'
-    if word.endswith('es'):
-        return word[:-2]
-    if word.endswith('ed'):
-        return word[:-2] if len(word) > 4 else word
-    if word.endswith('ing'):
-        return word[:-3] if len(word) > 5 else word
-    if word.endswith('s'):
-        return word[:-1]
-    
-    # Contracciones comunes
-    contraction_map = {
-        "n't": " not",
-        "'re": " are",
-        "'m": " am",
-        "'ll": " will",
-        "'d": " would",
-        "'ve": " have"
-    }
-    
-    for suffix, replacement in contraction_map.items():
-        if word.endswith(suffix):
-            return word[:-len(suffix)] + replacement
-    
+    for tag in pos_tags:
+        lemma = lemmatizer.lemmatize(word, tag)
+        if lemma != word:
+            return lemma
     return word
 
-# Función adicional útil para análisis de texto
 def calculate_lexical_density(words):
     """
     Calcula la densidad léxica (proporción de palabras únicas)
@@ -91,20 +78,3 @@ def calculate_lexical_density(words):
         return 0.0
     unique_words = len(set(words))
     return unique_words / len(words)
-
-# Ejemplo de uso (puedes eliminar esto en producción)
-if __name__ == "__main__":
-    sample_text = "I'm running faster than the others. They aren't trying hard enough!"
-    print("Texto original:", sample_text)
-    
-    tokens = tokenize(sample_text)
-    print("Tokens:", tokens)
-    
-    filtered = remove_stopwords(tokens)
-    print("Sin stopwords:", filtered)
-    
-    lemmatized = [basic_lemmatize(word) for word in filtered]
-    print("Lematizado:", lemmatized)
-    
-    density = calculate_lexical_density(lemmatized)
-    print(f"Densidad léxica: {density:.2%}")
