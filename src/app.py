@@ -9,7 +9,7 @@ from collections import defaultdict
 
 # Configuración
 st.set_page_config(layout="wide")
-st.title("ANÁLISIS LÉXICO: 'FROM' - EVOLUCIÓN TEMPORADA 1")
+st.title("ANÁLISIS LÉXICO: 'FROM' - EVOLUCIÓN TEMPORADA 3")
 
 # Cargar datos
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
