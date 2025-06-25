@@ -20,14 +20,14 @@ Realizar un análisis léxico y estadístico de los diálogos de la primera temp
 ## 📊 Recolección y Selección de Datos
 
 **Fuentes principales:**  
-1. Transcripciones completas de los 10 episodios de la Temporada 1 (formato `.stt`)  
+1. Transcripciones completas de los 10 episodios de la Temporada 1 (formato `.srt`)  
 2. Metadatos episódicos (duración, personajes, escenas clave)  
 
 
 
 
 **Formatos compatibles:**  
-- Texto estructurado (`.stt`) para transcripciones  
+- Texto estructurado (`.srt`) para transcripciones  
 - CSV para análisis estadísticos  
 - JSON para metadatos  
 
