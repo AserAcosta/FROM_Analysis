@@ -1,42 +1,42 @@
-import streamlit as st
-import os
-import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
-from analysis.lexical_analysis import process_episodes
-from visualization.wordcloud_generator import generate_wordcloud
-from collections import defaultdict
+import streamlit as st  # Importa Streamlit para crear la interfaz web
+import os  # Importa os para manejo de rutas y archivos
+import pandas as pd  # Importa pandas para manipulación de datos tabulares
+import matplotlib.pyplot as plt  # Importa matplotlib para gráficos
+import numpy as np  # Importa numpy para operaciones numéricas
+from analysis.lexical_analysis import process_episodes  # Importa función de análisis léxico
+from visualization.wordcloud_generator import generate_wordcloud  # Importa función para nubes de palabras
+from collections import defaultdict  # Importa defaultdict para diccionarios con valores por defecto
 
-# Configuración
-st.set_page_config(layout="wide")
-st.title("ANÁLISIS LÉXICO: 'FROM' - EVOLUCIÓN TEMPORADA 3")
+# Configuración de la página de Streamlit
+st.set_page_config(layout="wide")  # Define el layout ancho para la app
+st.title("ANÁLISIS LÉXICO: 'FROM' - EVOLUCIÓN TEMPORADA 3")  # Título principal
 
 # Cargar datos
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-data_folder = os.path.join(BASE_DIR, 'data')
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # Obtiene el directorio base del proyecto
+data_folder = os.path.join(BASE_DIR, 'data')  # Define la ruta a la carpeta de datos
 
-@st.cache_data
+@st.cache_data  # Cachea la función para evitar recargar datos innecesariamente
 def load_data():
-    return process_episodes(data_folder)
+    return process_episodes(data_folder)  # Procesa los episodios y retorna resultados
 
-results, global_top, semantic_evolution, main_themes = load_data()
-df = pd.DataFrame(results)
+results, global_top, semantic_evolution, main_themes = load_data()  # Carga los datos procesados
+df = pd.DataFrame(results)  # Convierte los resultados a un DataFrame de pandas
 
 # Calcular total de palabras
-total_words = df['total_words'].sum()
+total_words = df['total_words'].sum()  # Suma el total de palabras de todos los episodios
 
 # Sidebar
-st.sidebar.header("Opciones de Análisis")
+st.sidebar.header("Opciones de Análisis")  # Título del sidebar
 selected_words = st.sidebar.multiselect(
-    "Seleccionar palabras para seguimiento",
-    options=list(semantic_evolution.keys()),
-    default=list(semantic_evolution.keys())[:5]
+    "Seleccionar palabras para seguimiento",  # Etiqueta del selector múltiple
+    options=list(semantic_evolution.keys()),  # Opciones: palabras clave detectadas
+    default=list(semantic_evolution.keys())[:5]  # Por defecto, las primeras 5 palabras
 )
 
 # Función para calcular bigramas
 def calculate_bigrams(results):
     """Calcula los bigramas más frecuentes en toda la temporada"""
-    bigram_count = {}
+    bigram_count = {}  # Diccionario para contar bigramas
     
     for episode in results:
         # Obtener las palabras más frecuentes del episodio
@@ -47,20 +47,21 @@ def calculate_bigrams(results):
             bigram = (words[i], words[i+1])
             bigram_count[bigram] = bigram_count.get(bigram, 0) + 1
     
+    # Ordena los bigramas por frecuencia descendente
     return sorted(bigram_count.items(), key=lambda x: x[1], reverse=True)
 
-# Pestañas
+# Pestañas principales de la app
 tab1, tab2, tab3 = st.tabs(["Resumen Temporada", "Evolución Léxica", "Análisis Temático"])
 
 with tab1:
-    st.header("Resumen de la Temporada")
+    st.header("Resumen de la Temporada")  # Encabezado de la pestaña
     
     # Métricas principales
-    cols = st.columns(4)
-    cols[0].metric("Total de palabras", total_words)
-    cols[1].metric("Palabras únicas", df['unique_words'].sum())
-    cols[2].metric("Densidad léxica promedio", f"{df['lexical_density'].mean():.4f}")
-    cols[3].metric("Palabra más frecuente", f"'{global_top[0][0]}' ({global_top[0][1]} veces)")
+    cols = st.columns(4)  # Divide en 4 columnas
+    cols[0].metric("Total de palabras", total_words)  # Muestra total de palabras
+    cols[1].metric("Palabras únicas", df['unique_words'].sum())  # Muestra palabras únicas
+    cols[2].metric("Densidad léxica promedio", f"{df['lexical_density'].mean():.4f}")  # Densidad léxica promedio
+    cols[3].metric("Palabra más frecuente", f"'{global_top[0][0]}' ({global_top[0][1]} veces)")  # Palabra más frecuente
     
     # Gráfico de evolución de densidad léxica
     st.subheader("Evolución de la Densidad Léxica")
@@ -74,15 +75,15 @@ with tab1:
     
     # Nube de palabras global
     st.subheader("Nube de Palabras de Toda la Temporada")
-    wordcloud = generate_wordcloud(dict(global_top[:100]))
-    st.image(wordcloud, use_container_width=True)
+    wordcloud = generate_wordcloud(dict(global_top[:100]))  # Genera la nube con las 100 palabras más frecuentes
+    st.image(wordcloud, use_container_width=True)  # Muestra la imagen de la nube
     
     # Temas principales
     st.subheader("Temas Principales")
     
     if main_themes:
         # Mostrar tarjetas de temas
-        cols = st.columns(3)
+        cols = st.columns(3)  # Divide en 3 columnas para los temas
         for i, (theme, data) in enumerate(main_themes):
             with cols[i % 3]:
                 with st.expander(f"**{theme}** (Frecuencia: {data['frequency']})"):
@@ -115,10 +116,10 @@ with tab1:
         ax.set_rlabel_position(30)
         st.pyplot(fig)
     else:
-        st.warning("No se identificaron temas significativos")
+        st.warning("No se identificaron temas significativos")  # Mensaje si no hay temas
 
 with tab2:
-    st.header("Evolución Léxica")
+    st.header("Evolución Léxica")  # Encabezado de la pestaña
     
     # Evolución de palabras seleccionadas
     st.subheader("Evolución de Palabras Clave")
@@ -169,7 +170,7 @@ with tab2:
     st.pyplot(fig)
 
 with tab3:
-    st.header("Análisis Temático")
+    st.header("Análisis Temático")  # Encabezado de la pestaña
     
     # Visualización alternativa para relaciones entre palabras
     st.subheader("Distribución de Palabras Clave por Episodio")
@@ -213,4 +214,4 @@ with tab3:
         ax.set_title("Pares de Palabras Más Comunes")
         st.pyplot(fig)
     else:
-        st.warning("No se encontraron bigramas significativos")
+        st.warning("No se encontraron bigramas significativos")  # Mensaje si no hay bigramas
