@@ -116,7 +116,7 @@ with tab1:
     st.subheader("Nube de Palabras de Toda la Temporada")
     wordcloud = generate_wordcloud(dict(global_top[:100]))
     if wordcloud:
-        st.image(wordcloud, use_column_width=True)
+        st.image(wordcloud, use_container_width=True)  # CAMBIO AQUÍ
     else:
         st.warning("No se pudo generar la nube de palabras")
     
