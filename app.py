@@ -4,7 +4,7 @@ import pandas as pd
 import math
 import matplotlib.pyplot as plt
 from lexical_analysis import process_episodes
-from utils.wordcloud_utils import generate_wordcloud
+
 
 # Configuración
 st.set_page_config(layout="wide")
@@ -47,10 +47,6 @@ if ep_data['top_words']:
         ax.tick_params(axis='x', rotation=45)
         st.pyplot(fig)
     
-    with col2:
-        word_freq = dict(ep_data['top_words'])
-        wordcloud = generate_wordcloud(word_freq)
-        st.image(wordcloud, caption="Nube de palabras", use_container_width=True)
 else:
     st.warning("No se encontraron palabras significativas")
 
