@@ -9,7 +9,6 @@ from collections import defaultdict
 import seaborn as sns
 import logging
 
-
 import nltk
 from nltk import data
 
@@ -27,8 +26,6 @@ for res_name, res_path in resources:
         data.find(res_path)
     except LookupError:
         nltk.download(res_name, quiet=True)
-
-        
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -48,6 +45,9 @@ try:
     results, global_top, semantic_evolution, main_themes = load_data()
     df = pd.DataFrame(results)
     total_words = df['total_words'].sum()
+    
+    # Añadir columna numérica de episodios
+    df['episode_num'] = df['episode'].astype(int)
 except Exception as e:
     st.error(f"Error cargando datos: {str(e)}")
     st.stop()
@@ -105,8 +105,15 @@ with tab1:
     # Gráfico de densidad léxica
     st.subheader("Evolución de la Densidad Léxica")
     fig, ax = plt.subplots(figsize=(12, 6))
-    sns.lineplot(data=df, x='episode', y='lexical_density', 
+    
+    # Usar episodios numéricos
+    sns.lineplot(data=df, x='episode_num', y='lexical_density', 
                 color='#8B0000', marker='o', linewidth=2.5, ax=ax)
+    
+    # Configurar etiquetas de eje x
+    ax.set_xticks(df['episode_num'])
+    ax.set_xticklabels(df['episode'])
+    
     ax.set(xlabel="Episodio", ylabel="Densidad Léxica", 
           title="Variación de Riqueza Lingüística por Episodio")
     ax.grid(alpha=0.3)
@@ -116,7 +123,7 @@ with tab1:
     st.subheader("Nube de Palabras de Toda la Temporada")
     wordcloud = generate_wordcloud(dict(global_top[:100]))
     if wordcloud:
-        st.image(wordcloud, use_container_width=True)  # CAMBIO AQUÍ
+        st.image(wordcloud, use_container_width=True)
     else:
         st.warning("No se pudo generar la nube de palabras")
     
@@ -172,10 +179,15 @@ with tab2:
             for ep, count in semantic_evolution[word]:
                 ep_data = next(x for x in results if x['episode'] == ep)
                 rel_freq = count / ep_data['total_words'] if ep_data['total_words'] > 0 else 0
-                episodes.append(ep)
+                episodes.append(int(ep))  # Convertir a número
                 freqs.append(rel_freq)
             
             ax.plot(episodes, freqs, 'o-', label=word, linewidth=2)
+        
+        # Configurar etiquetas de eje x
+        all_episodes = sorted(set(episodes))
+        ax.set_xticks(all_episodes)
+        ax.set_xticklabels([f"{ep:02d}" for ep in all_episodes])
         
         ax.set(xlabel="Episodio", ylabel="Frecuencia Relativa",
               title="Evolución de Palabras Clave")
@@ -202,19 +214,27 @@ with tab2:
     
     all_words = set()
     novelty = []
+    episode_nums = []
+    
     for episode in results:
         current_words = set(word for word, _ in episode['top_words'])
         new_words = current_words - all_words
         novelty.append(len(new_words) / len(current_words) if current_words else 0)
         all_words.update(current_words)
+        episode_nums.append(int(episode['episode']))  # Convertir a número
     
     novelty_df = pd.DataFrame({
-        'Episodio': df['episode'],
+        'Episodio': episode_nums,  # Usar números
         'Novedad Léxica': novelty
     })
     
     sns.lineplot(data=novelty_df, x='Episodio', y='Novedad Léxica', 
                 color='#4daf4a', marker='o', linewidth=2.5, ax=ax)
+    
+    # Configurar etiquetas de eje x
+    ax.set_xticks(episode_nums)
+    ax.set_xticklabels([f"{ep:02d}" for ep in episode_nums])
+    
     ax.set(xlabel="Episodio", ylabel="Porcentaje de Palabras Nuevas",
           title="Innovación Léxica por Episodio")
     ax.grid(alpha=0.3)
@@ -229,12 +249,20 @@ with tab3:
     
     heatmap_data = []
     episodes = []
+    episode_nums = []
+    
     for ep in results:
         ep_words = set(word for word, _ in ep['top_words'])
         heatmap_data.append([1 if word in ep_words else 0 for word in top_words])
         episodes.append(f"Ep {ep['episode']}")
+        episode_nums.append(int(ep['episode']))  # Para ordenar numéricamente
     
-    heatmap_df = pd.DataFrame(heatmap_data, index=episodes, columns=top_words)
+    # Ordenar por número de episodio
+    sorted_indices = np.argsort(episode_nums)
+    sorted_heatmap_data = [heatmap_data[i] for i in sorted_indices]
+    sorted_episodes = [episodes[i] for i in sorted_indices]
+    
+    heatmap_df = pd.DataFrame(sorted_heatmap_data, index=sorted_episodes, columns=top_words)
     
     fig, ax = plt.subplots(figsize=(14, 8))
     sns.heatmap(heatmap_df.T, annot=False, cmap="YlGnBu", cbar_kws={'label': 'Presencia'}, ax=ax)
