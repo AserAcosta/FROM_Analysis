@@ -91,33 +91,47 @@ def cached_lemmatize(word, pos=wordnet.NOUN):
 # Tokenización y lematización mejorada
 def tokenize_and_lemmatize(text):
     """Procesamiento de texto con POS tagging y filtrado numérico"""
-    # Tokenización segura
+    # 1. Verificar recursos NLTK
+    required_resources = ['punkt', 'averaged_perceptron_tagger']
+    for resource in required_resources:
+        try:
+            nltk.data.find(f'tokenizers/{resource}' if resource == 'punkt' else f'taggers/{resource}')
+        except LookupError:
+            logger.warning(f"Descargando recurso faltante: {resource}")
+            nltk.download(resource, quiet=True)
+    
+    # 2. Tokenización segura con doble verificación
+    tokens = []
     try:
         tokens = nltk.word_tokenize(text)
+    except Exception as e:
+        logger.error(f"Tokenización fallida: {str(e)} - Usando alternativa regex")
+        tokens = re.findall(r"\b[a-zA-Z']{3,}\b", text)
+    
+    # 3. POS Tagging con manejo de errores
+    pos_tags = []
+    try:
         pos_tags = nltk.pos_tag(tokens)
     except Exception as e:
-        logger.error(f"Tokenization error: {str(e)}")
-        # Fallback: tokenización simple
-        tokens = re.findall(r"\b[a-zA-Z']{3,}\b", text)
+        logger.error(f"POS Tagging fallido: {str(e)} - Continuando sin POS")
         pos_tags = [(token, '') for token in tokens]
     
+    # 4. Lematización con filtrado
     lemmatized = []
     for word, tag in pos_tags:
         word_lower = word.lower()
         
-        # Filtros clave: stopwords, palabras cortas, números, no alfabéticas
+        # Filtros clave
         if (word_lower in STOP_WORDS or 
             len(word) < 3 or 
             word.isdigit() or 
-            not word.isalpha() or 
-            not WORD_PATTERN.match(word_lower)):
+            not word.isalpha()):
             continue
         
         # Lematizar con POS específico
         wn_pos = get_wordnet_pos(tag)
         lemma = cached_lemmatize(word_lower, wn_pos)
         
-        # Filtrar lemas no válidos (None o no alfabéticos)
         if lemma and lemma.isalpha() and len(lemma) > 2:
             lemmatized.append(lemma)
     

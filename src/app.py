@@ -250,7 +250,8 @@ with tab3:
         bigram_df['Palabras'] = bigram_df['Bigrama'].apply(lambda x: f"{x[0]} + {x[1]}")
         
         fig, ax = plt.subplots(figsize=(12, 8))
-        sns.barplot(data=bigram_df, y='Palabras', x='Frecuencia', palette="viridis", ax=ax)
+        sns.barplot(data=bigram_df, y='Palabras', x='Frecuencia', 
+            hue='Palabras', palette="viridis", ax=ax, legend=False, dodge=False)
         ax.set(xlabel="Frecuencia", title="Pares de Palabras Más Comunes")
         st.pyplot(fig)
     else:
