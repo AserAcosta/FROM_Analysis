@@ -1,33 +1,36 @@
 from nltk.corpus import wordnet
 from collections import defaultdict
-import numpy as np
+import logging
+
+# Configurar logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 def identify_main_themes(global_top, threshold=0.01):
-    """
-    Identifica temas principales dinámicamente usando:
-    - Agrupación semántica
-    - Expansión de sinónimos
-    - Frecuencia relativa
-    """
+    """Identifica temas principales usando agrupación semántica"""
     total_words = sum(count for _, count in global_top)
     word_freq = dict(global_top)
     
     # Temas base con palabras clave iniciales
     base_themes = {
-        'Misterio': ['mystery', 'strange', 'secret', 'unknown', 'puzzle', 'weird'],
-        'Peligro': ['danger', 'threat', 'monster', 'attack', 'safe', 'kill', 'death'],
-        'Familia': ['family', 'son', 'daughter', 'child', 'mother', 'father', 'parent'],
-        'Supervivencia': ['survive', 'food', 'water', 'shelter', 'resource', 'supply', 'hunger'],
-        'Locación': ['town', 'forest', 'house', 'road', 'tree', 'building', 'place', 'location'],
-        'Emociones': ['fear', 'hope', 'trust', 'angry', 'scared', 'confused', 'feel']
+        'Mystery': ['mystery', 'strange', 'secret', 'unknown', 'puzzle'],
+        'Danger': ['danger', 'threat', 'monster', 'attack', 'death'],
+        'Family': ['family', 'son', 'daughter', 'parent', 'home'],
+        'Survival': ['survive', 'food', 'water', 'shelter', 'resource'],
+        'Location': ['town', 'forest', 'house', 'road', 'building'],
+        'Emotions': ['fear', 'hope', 'trust', 'angry', 'scared'],
+        'Supernatural': ['ghost', 'spirit', 'supernatural', 'paranormal', 'haunted'],
+        'Suspense': ['suspense', 'tension', 'anxiety', 'anticipation', 'uncertainty']
     }
     
     # Expansión de temas con sinónimos
     expanded_themes = defaultdict(list)
     for theme, keywords in base_themes.items():
         for keyword in keywords:
+            # Añadir palabra base si existe
             if keyword in word_freq:
                 expanded_themes[theme].append(keyword)
+            
             # Buscar sinónimos
             for syn in wordnet.synsets(keyword):
                 for lemma in syn.lemmas():
@@ -45,11 +48,11 @@ def identify_main_themes(global_top, threshold=0.01):
                 theme_freq[theme] += count
                 theme_words[theme].append((word, count))
     
-    # Filtrar temas significativos (al menos 1% del total)
+    # Filtrar temas significativos
     significant_themes = {}
     for theme, freq in theme_freq.items():
         if freq / total_words >= threshold:
-            # Ordenar palabras del tema por frecuencia
+            # Ordenar palabras del tema
             theme_words[theme].sort(key=lambda x: x[1], reverse=True)
             significant_themes[theme] = {
                 'frequency': freq,
@@ -57,8 +60,4 @@ def identify_main_themes(global_top, threshold=0.01):
             }
     
     # Ordenar temas por frecuencia
-    sorted_themes = sorted(significant_themes.items(), 
-                          key=lambda x: x[1]['frequency'], 
-                          reverse=True)
-    
-    return sorted_themes
+    return sorted(significant_themes.items(), key=lambda x: x[1]['frequency'], reverse=True)

@@ -1,65 +1,179 @@
 import re
 import os
+import nltk
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import wordnet
-import nltk
+from functools import lru_cache
+import logging
 
-# Descargar recursos necesarios
-nltk.download('wordnet', quiet=True)
-nltk.download('omw-1.4', quiet=True)
+# Configurar logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+
+def download_nltk_resources():
+    resources = {
+        'punkt': 'tokenizers/punkt',
+        'wordnet': 'corpora/wordnet',
+        'stopwords': 'corpora/stopwords',
+        'averaged_perceptron_tagger': 'taggers/averaged_perceptron_tagger',
+        'omw-1.4': 'corpora/omw-1.4'
+    }
+    
+    for resource, path in resources.items():
+        try:
+            nltk.data.find(path)
+        except LookupError:
+            nltk.download(resource, quiet=True)
+
+# Llama a la función al inicio
+download_nltk_resources()
 
 lemmatizer = WordNetLemmatizer()
+stopwords = set(nltk.corpus.stopwords.words('english'))
 
-def tokenize(text):
-    words = re.findall(r"\b[\w']+\b", text.lower())
-    return words
+# Cargar stopwords adicionales
+def load_custom_stopwords():
+    """Carga stopwords personalizadas"""
+    custom_stopwords = set()
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    stopwords_file = os.path.join(script_dir, "stopwords.txt")
+    
+    if os.path.exists(stopwords_file):
+        try:
+            with open(stopwords_file, 'r', encoding='utf-8') as f:
+                custom_stopwords = set(line.strip() for line in f if line.strip())
+        except Exception as e:
+            logger.error(f"Error loading stopwords: {str(e)}")
+    
+    # Añadir palabras específicas de series
+    tv_stopwords = {'im', 'dont', 'youre', 'hes', 'shes', 'thats', 'whats', 'theres', 'ill', 'ive', 'theyre', 'wanna', 'gonna', 'gotta'}
+    return stopwords.union(custom_stopwords).union(tv_stopwords)
 
-def remove_stopwords(words, stopwords_file=None):
-    """
-    Filtra stopwords desde archivo local con manejo de errores robusto
-    """
-    
-    stop_words = {'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', "you're", 
-                         "you've", "you'll", "you'd", 'your', 'yours', 'yourself', 'yourselves', 'he', 
-                         'him', 'his', 'himself', 'she', "she's", 'her', 'hers', 'herself', 'it', "it's", 
-                         'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 
-                         'who', 'whom', 'this', 'that', "that'll", 'these', 'those', 'am', 'is', 'are', 
-                         'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 
-                         'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until', 
-                         'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into', 
-                         'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down', 
-                         'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 
-                         'there', 'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 
-                         'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 
-                         'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', "don't", 'should', 
-                         "should've", 'now', 'd', 'll', 'm', 'o', 're', 've', 'y', 'ain', 'aren', "aren't", 
-                         'couldn', "couldn't", 'didn', "didn't", 'doesn', "doesn't", 'hadn', "hadn't", 'hasn', 
-                         "hasn't", 'haven', "haven't", 'isn', "isn't", 'ma', 'mightn', "mightn't", 'mustn', 
-                         "mustn't", 'needn', "needn't", 'shan', "shan't", 'shouldn', "shouldn't", 'wasn', 
-                         "wasn't", 'weren', "weren't", 'won', "won't", 'wouldn', "wouldn't"}
-    
-    
-    
-    
-    return [word for word in words if word not in stop_words]
+# Precarga en memoria
+STOP_WORDS = load_custom_stopwords()
+logger.info(f"Loaded {len(STOP_WORDS)} stopwords")
 
-def advanced_lemmatize(word):
-    """
-    Lematización avanzada usando WordNet
-    """
-    pos_tags = [wordnet.NOUN, wordnet.VERB, wordnet.ADJ, wordnet.ADV]
+# Regex precompiladas - SOLO PALABRAS ALFABÉTICAS
+WORD_PATTERN = re.compile(r"\b[a-zA-Z']{3,}\b")  # Palabras de 3+ letras (con apóstrofes)
+
+# Mapeo POS mejorado
+def get_wordnet_pos(treebank_tag):
+    """Obtiene POS tag simplificado para lematización"""
+    if treebank_tag.startswith('J'):
+        return wordnet.ADJ
+    elif treebank_tag.startswith('V'):
+        return wordnet.VERB
+    elif treebank_tag.startswith('N'):
+        return wordnet.NOUN
+    elif treebank_tag.startswith('R'):
+        return wordnet.ADV
+    else:
+        return wordnet.NOUN  # Por defecto sustantivo
+
+# Lematización con caché y POS tagging
+@lru_cache(maxsize=10000)
+def cached_lemmatize(word, pos=wordnet.NOUN):
+    """Lematización con POS tagging"""
+    # Excluir palabras numéricas
+    if word.isdigit():
+        return None
     
-    for tag in pos_tags:
-        lemma = lemmatizer.lemmatize(word, tag)
-        if lemma != word:
+    try:
+        lemma = lemmatizer.lemmatize(word.lower(), pos)
+        # Asegurar que el lema sea alfabético
+        if lemma.isalpha():
             return lemma
-    return word
+        return None
+    except:
+        return None
 
-def calculate_lexical_density(words):
-    """
-    Calcula la densidad léxica (proporción de palabras únicas)
-    """
-    if not words:
-        return 0.0
-    unique_words = len(set(words))
-    return unique_words / len(words)
+# Tokenización y lematización mejorada
+def tokenize_and_lemmatize(text):
+    """Procesamiento de texto con POS tagging y filtrado numérico"""
+    # Tokenización segura
+    try:
+        tokens = nltk.word_tokenize(text)
+        pos_tags = nltk.pos_tag(tokens)
+    except Exception as e:
+        logger.error(f"Tokenization error: {str(e)}")
+        # Fallback: tokenización simple
+        tokens = re.findall(r"\b[a-zA-Z']{3,}\b", text)
+        pos_tags = [(token, '') for token in tokens]
+    
+    lemmatized = []
+    for word, tag in pos_tags:
+        word_lower = word.lower()
+        
+        # Filtros clave: stopwords, palabras cortas, números, no alfabéticas
+        if (word_lower in STOP_WORDS or 
+            len(word) < 3 or 
+            word.isdigit() or 
+            not word.isalpha() or 
+            not WORD_PATTERN.match(word_lower)):
+            continue
+        
+        # Lematizar con POS específico
+        wn_pos = get_wordnet_pos(tag)
+        lemma = cached_lemmatize(word_lower, wn_pos)
+        
+        # Filtrar lemas no válidos (None o no alfabéticos)
+        if lemma and lemma.isalpha() and len(lemma) > 2:
+            lemmatized.append(lemma)
+    
+    return lemmatized
+
+# Función para procesar archivos .srt
+def process_srt_file(file_path):
+    """Procesa un archivo .srt y devuelve estadísticas"""
+    try:
+        with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+            content = f.read()
+        
+        # Extraer textos de subtítulos
+        full_text = ' '.join(re.findall(r'\d+\n\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}\n([^\n]+)', content))
+        
+        if not full_text:
+            return {
+                'file': os.path.basename(file_path),
+                'total_words': 0,
+                'unique_words': 0,
+                'lexical_density': 0.0,
+                'content': ""
+            }
+        
+        # Procesamiento de texto
+        processed_words = tokenize_and_lemmatize(full_text)
+        unique_count = len(set(processed_words))
+        total_count = len(processed_words)
+        
+        return {
+            'file': os.path.basename(file_path),
+            'total_words': total_count,
+            'unique_words': unique_count,
+            'lexical_density': unique_count / total_count if total_count else 0.0,
+            'content': ' '.join(processed_words)
+        }
+    
+    except Exception as e:
+        logger.error(f"Error processing file: {str(e)}")
+        return {
+            'file': os.path.basename(file_path),
+            'total_words': 0,
+            'unique_words': 0,
+            'lexical_density': 0.0,
+            'content': ""
+        }
+
+# Procesamiento por lotes
+def process_srt_directory(directory):
+    """Procesa todos los archivos .srt en un directorio"""
+    results = []
+    for filename in os.listdir(directory):
+        if filename.lower().endswith('.srt'):
+            file_path = os.path.join(directory, filename)
+            results.append(process_srt_file(file_path))
+    
+    # Generar reporte
+    logger.info(f"Processed {len(results)} files")
+    return results
